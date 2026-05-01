@@ -48,6 +48,32 @@ def test_install_conda(tmp_path):
     )
 
 
+def test_install_link_scripts(tmp_path: Path, test_package: Path):
+    env_location = tmp_path / "env"
+    run_conda(
+        "create",
+        "-p",
+        env_location,
+        test_package,
+        "-y",
+        check=True,
+    )
+    assert next((env_location / "conda-meta").glob("test_package-*.json"), None)
+    script_output = env_location / "script_output.txt"
+    assert script_output.exists()
+    assert script_output.read_text().splitlines() == ["pre-link", "post-link"]
+    run_conda(
+        "remove",
+        "-p",
+        env_location,
+        "--all",
+        "-y",
+        check=True,
+    )
+    assert next((env_location / "conda-meta").glob("test_package-*.json"), None) is None
+    assert not (env_location / "uninstall_output.txt").exists()
+
+
 def test_constructor():
     run_conda("constructor", "--help", check=True)
 
