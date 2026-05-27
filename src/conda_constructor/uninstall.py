@@ -24,6 +24,178 @@ from menuinst.cli.cli import install as install_shortcut
 from ruamel.yaml import YAML
 
 logger = logging.getLogger()
+
+
+# =============================================================================
+# DEBUG HELPERS - TEMPORARY FOR DEBUGGING MSI UNINSTALL ISSUES
+# =============================================================================
+def _debug_print(msg: str):
+    """Print debug message to both stdout and stderr for visibility."""
+    print(f"[DEBUG] {msg}")
+    print(f"[DEBUG] {msg}", file=sys.stderr)
+
+
+def _debug_dump_environment():
+    """Dump relevant environment variables for debugging."""
+    _debug_print("=" * 60)
+    _debug_print("ENVIRONMENT VARIABLE DUMP")
+    _debug_print("=" * 60)
+
+    # Key environment variables for path resolution
+    key_vars = [
+        "USERPROFILE",
+        "HOMEPATH",
+        "HOMEDRIVE",
+        "HOME",
+        "USERNAME",
+        "USERDOMAIN",
+        "COMPUTERNAME",
+        "SYSTEMROOT",
+        "WINDIR",
+        "TEMP",
+        "TMP",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "ALLUSERSPROFILE",
+        "PROGRAMDATA",
+        "CONDA_ROOT_PREFIX",
+        "CONDA_PREFIX",
+        "CONDA_ROOT",
+        "CONDA_ROOT_DIR",
+    ]
+
+    for var in key_vars:
+        value = os.environ.get(var, "<NOT SET>")
+        _debug_print(f"  {var}={value}")
+
+    _debug_print("-" * 60)
+
+
+def _debug_dump_path_resolution():
+    """Dump path resolution results for debugging."""
+    _debug_print("=" * 60)
+    _debug_print("PATH RESOLUTION DUMP")
+    _debug_print("=" * 60)
+
+    # Test Path.home()
+    try:
+        home = Path.home()
+        _debug_print(f"  Path.home() = {home}")
+        _debug_print(f"  Path.home() exists = {home.exists()}")
+    except Exception as e:
+        _debug_print(f"  Path.home() FAILED: {type(e).__name__}: {e}")
+
+    # Test os.path.expanduser
+    try:
+        expanded = os.path.expanduser("~")
+        _debug_print(f"  os.path.expanduser('~') = {expanded}")
+        _debug_print(f"  expanduser contains '~' = {'~' in expanded}")
+    except Exception as e:
+        _debug_print(f"  os.path.expanduser('~') FAILED: {type(e).__name__}: {e}")
+
+    # Test Path("~").expanduser()
+    try:
+        expanded_path = Path("~").expanduser()
+        _debug_print(f"  Path('~').expanduser() = {expanded_path}")
+    except Exception as e:
+        _debug_print(f"  Path('~').expanduser() FAILED: {type(e).__name__}: {e}")
+
+    # Test the actual path we'll use for .conda
+    try:
+        conda_dir = Path("~/.conda").expanduser()
+        _debug_print(f"  Path('~/.conda').expanduser() = {conda_dir}")
+        _debug_print(f"  ~/.conda exists = {conda_dir.exists()}")
+        if conda_dir.exists():
+            _debug_print(f"  ~/.conda is_dir = {conda_dir.is_dir()}")
+            try:
+                contents = list(conda_dir.iterdir())
+                _debug_print(f"  ~/.conda contents = {[str(p) for p in contents]}")
+            except Exception as e:
+                _debug_print(f"  ~/.conda iterdir FAILED: {e}")
+    except Exception as e:
+        _debug_print(f"  Path('~/.conda').expanduser() FAILED: {type(e).__name__}: {e}")
+
+    # Test .condarc path
+    try:
+        condarc = Path("~/.condarc").expanduser()
+        _debug_print(f"  Path('~/.condarc').expanduser() = {condarc}")
+        _debug_print(f"  ~/.condarc exists = {condarc.exists()}")
+    except Exception as e:
+        _debug_print(f"  Path('~/.condarc').expanduser() FAILED: {type(e).__name__}: {e}")
+
+    _debug_print("-" * 60)
+
+
+def _debug_dump_conda_context():
+    """Dump conda context information for debugging."""
+    _debug_print("=" * 60)
+    _debug_print("CONDA CONTEXT DUMP")
+    _debug_print("=" * 60)
+
+    try:
+        _debug_print(f"  context.root_prefix = {context.root_prefix}")
+    except Exception as e:
+        _debug_print(f"  context.root_prefix FAILED: {e}")
+
+    try:
+        _debug_print(f"  context.conda_prefix = {context.conda_prefix}")
+    except Exception as e:
+        _debug_print(f"  context.conda_prefix FAILED: {e}")
+
+    try:
+        _debug_print(f"  context.target_prefix = {context.target_prefix}")
+    except Exception as e:
+        _debug_print(f"  context.target_prefix FAILED: {e}")
+
+    try:
+        config_files = list(context.config_files)
+        _debug_print(f"  context.config_files count = {len(config_files)}")
+        for i, cf in enumerate(config_files):
+            cf_path = Path(cf) if not isinstance(cf, Path) else cf
+            _debug_print(f"    [{i}] {cf_path} (exists={cf_path.exists()})")
+    except Exception as e:
+        _debug_print(f"  context.config_files FAILED: {e}")
+
+    try:
+        _debug_print(f"  context.pkgs_dirs = {context.pkgs_dirs}")
+    except Exception as e:
+        _debug_print(f"  context.pkgs_dirs FAILED: {e}")
+
+    _debug_print("-" * 60)
+
+
+def _debug_dump_process_info():
+    """Dump process information for debugging."""
+    _debug_print("=" * 60)
+    _debug_print("PROCESS INFO DUMP")
+    _debug_print("=" * 60)
+    _debug_print(f"  sys.executable = {sys.executable}")
+    _debug_print(f"  sys.platform = {sys.platform}")
+    _debug_print(f"  os.getcwd() = {os.getcwd()}")
+    _debug_print(f"  os.getpid() = {os.getpid()}")
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            _debug_print(f"  IsUserAnAdmin = {ctypes.windll.shell32.IsUserAnAdmin()}")
+        except Exception as e:
+            _debug_print(f"  IsUserAnAdmin FAILED: {e}")
+
+        try:
+            # Get current user via Windows API
+            import ctypes
+            GetUserNameW = ctypes.windll.advapi32.GetUserNameW
+            buffer = ctypes.create_unicode_buffer(256)
+            size = ctypes.pointer(ctypes.c_ulong(256))
+            GetUserNameW(buffer, size)
+            _debug_print(f"  GetUserNameW = {buffer.value}")
+        except Exception as e:
+            _debug_print(f"  GetUserNameW FAILED: {e}")
+
+    _debug_print("-" * 60)
+# =============================================================================
+# END DEBUG HELPERS
+# =============================================================================
 # On Windows, these warnings are expected because the uninstaller may still be
 # accessing files (like install.log) that conda cannot rename.
 if sys.platform == "win32":
@@ -37,22 +209,47 @@ def _remove_file_directory(file: Path, raise_on_error: bool = False):
 
     If the file is a link, just unlink, do not remove the target.
     """
+    _debug_print(f"_remove_file_directory called with: {file}")
+    _debug_print(f"  file type: {type(file)}")
+    _debug_print(f"  file str: '{file}'")
+
     try:
-        if not file.exists():
+        exists = file.exists()
+        _debug_print(f"  file.exists() = {exists}")
+        if not exists:
+            _debug_print(f"  -> File does not exist, returning early")
             return
-        if file.is_dir():
+
+        is_dir = file.is_dir()
+        is_symlink = file.is_symlink()
+        is_file = file.is_file()
+        _debug_print(f"  file.is_dir() = {is_dir}")
+        _debug_print(f"  file.is_symlink() = {is_symlink}")
+        _debug_print(f"  file.is_file() = {is_file}")
+
+        if is_dir:
+            _debug_print(f"  -> Calling rmtree({file})")
             rmtree(file)
-        elif file.is_symlink() or file.is_file():
+            _debug_print(f"  -> rmtree completed successfully")
+        elif is_symlink or is_file:
+            _debug_print(f"  -> Calling file.unlink()")
             file.unlink()
+            _debug_print(f"  -> unlink completed successfully")
+        else:
+            _debug_print(f"  -> File is neither dir, symlink, nor file - skipping")
     except PermissionError as e:
         message = (
             f"Could not remove {file}. "
             "You may need to re-run with elevated privileges or manually remove this file."
         )
+        _debug_print(f"  -> PermissionError: {e}")
         if raise_on_error:
             raise PermissionError(message) from e
         else:
             logger.warning(message, exc_info=e)
+    except Exception as e:
+        _debug_print(f"  -> Unexpected exception: {type(e).__name__}: {e}")
+        raise
 
 
 def _remove_config_file_and_parents(file: Path, raise_on_error: bool = False):
@@ -63,22 +260,40 @@ def _remove_config_file_and_parents(file: Path, raise_on_error: bool = False):
     For that reason, search only for specific subdirectories
     and search backwards to be conservative about what is deleted.
     """
+    _debug_print(f"_remove_config_file_and_parents called with: {file}")
     rootdir = None
     _remove_file_directory(file, raise_on_error=raise_on_error)
     # Directories that may have been created by conda that are okay
     # to be removed if they are empty.
     if file.parent.parts[-1] in (".conda", "conda", "xonsh", "fish"):
         rootdir = file.parent
+        _debug_print(f"  rootdir set to parent: {rootdir}")
+
     # rootdir may be $HOME/%USERPROFILE% if the username is conda, etc.
-    if not rootdir or rootdir == Path.home():
+    try:
+        home = Path.home()
+        _debug_print(f"  Path.home() = {home}")
+    except Exception as e:
+        _debug_print(f"  Path.home() FAILED: {e}")
+        home = None
+
+    if not rootdir or (home and rootdir == home):
+        _debug_print(f"  -> Returning early (rootdir={rootdir}, home={home})")
         return
+
     # Covers directories like ~/.config/conda/
     if rootdir.parts[-1] in (".config", "conda"):
         rootdir = rootdir.parent
-    if rootdir == Path.home():
+        _debug_print(f"  rootdir adjusted to grandparent: {rootdir}")
+
+    if home and rootdir == home:
+        _debug_print(f"  -> Returning early (rootdir equals home)")
         return
+
     parent = file.parent
+    _debug_print(f"  Cleaning empty parent directories starting from: {parent}")
     while parent != rootdir.parent and not next(parent.iterdir(), None):
+        _debug_print(f"  Removing empty parent: {parent}")
         _remove_file_directory(parent, raise_on_error=raise_on_error)
         parent = parent.parent
 
@@ -269,26 +484,70 @@ def _remove_caches():
 
 
 def _remove_config_files(remove_config_files: str):
-    for config_file in context.config_files:
+    _debug_print(f"_remove_config_files called with: {remove_config_files}")
+
+    # Debug: show Path.home() value
+    try:
+        home = Path.home()
+        _debug_print(f"  Path.home() = {home}")
+    except Exception as e:
+        _debug_print(f"  Path.home() FAILED: {e}")
+        home = None
+
+    config_files_list = list(context.config_files)
+    _debug_print(f"  context.config_files has {len(config_files_list)} entries")
+
+    for i, config_file in enumerate(config_files_list):
+        _debug_print(f"  Processing config_file[{i}]: {config_file}")
         if not isinstance(config_file, Path):
             config_file = Path(config_file)
         config_dir = config_file.parent
-        if remove_config_files == "user" and not config_dir.is_relative_to(Path.home()):
-            continue
-        if remove_config_files == "system" and config_dir.is_relative_to(Path.home()):
-            continue
+        _debug_print(f"    config_dir = {config_dir}")
+        _debug_print(f"    config_file exists = {config_file.exists()}")
+
+        if remove_config_files == "user" and home:
+            try:
+                is_relative = config_dir.is_relative_to(home)
+                _debug_print(f"    is_relative_to(home) = {is_relative}")
+                if not is_relative:
+                    _debug_print(f"    -> Skipping (user mode, not relative to home)")
+                    continue
+            except Exception as e:
+                _debug_print(f"    is_relative_to check failed: {e}")
+
+        if remove_config_files == "system" and home:
+            try:
+                is_relative = config_dir.is_relative_to(home)
+                _debug_print(f"    is_relative_to(home) = {is_relative}")
+                if is_relative:
+                    _debug_print(f"    -> Skipping (system mode, is relative to home)")
+                    continue
+            except Exception as e:
+                _debug_print(f"    is_relative_to check failed: {e}")
+
         # Skip any configuration files that are relative to CONDA_ROOT or CONDA_PREFIX
         # because they may point to the paths of an activated environment and delete
         # a .condarc file of a different installation. If they point to the installation
         # directory, they have been removed with the environment already.
         conda_dir_env_vars = ("CONDA_ROOT", "CONDA_ROOT_DIR", "CONDA_ROOT_PREFIX", "CONDA_PREFIX")
-        if any(
-            config_dir.is_relative_to(Path(os.environ[envvar]))
-            for envvar in conda_dir_env_vars
-            if envvar in os.environ
-        ):
+        skip_due_to_conda_dir = False
+        for envvar in conda_dir_env_vars:
+            if envvar in os.environ:
+                try:
+                    envvar_path = Path(os.environ[envvar])
+                    is_relative = config_dir.is_relative_to(envvar_path)
+                    _debug_print(f"    is_relative_to({envvar}={envvar_path}) = {is_relative}")
+                    if is_relative:
+                        skip_due_to_conda_dir = True
+                        break
+                except Exception as e:
+                    _debug_print(f"    is_relative_to({envvar}) check failed: {e}")
+
+        if skip_due_to_conda_dir:
+            _debug_print(f"    -> Skipping (relative to conda dir)")
             continue
 
+        _debug_print(f"    -> Calling _remove_config_file_and_parents({config_file})")
         _remove_config_file_and_parents(config_file)
 
 
@@ -349,6 +608,24 @@ def uninstall(
     This command also provides options to remove various cache and configuration
     files to fully remove a conda installation.
     """
+    # ==========================================================================
+    # DEBUG OUTPUT AT START OF UNINSTALL
+    # ==========================================================================
+    _debug_print("=" * 70)
+    _debug_print("UNINSTALL FUNCTION CALLED")
+    _debug_print("=" * 70)
+    _debug_print(f"Arguments:")
+    _debug_print(f"  prefix = {prefix}")
+    _debug_print(f"  remove_caches = {remove_caches}")
+    _debug_print(f"  remove_config_files = {remove_config_files}")
+    _debug_print(f"  remove_user_data = {remove_user_data}")
+
+    _debug_dump_process_info()
+    _debug_dump_environment()
+    _debug_dump_path_resolution()
+    _debug_dump_conda_context()
+    # ==========================================================================
+
     # See: https://github.com/conda/conda/blob/475e6acbdc98122fcbef4733eb8cb8689324c1c8/conda/gateways/disk/create.py#L482-L488
     envs_dir_magic_file = ".conda_envs_dir_test"
 
@@ -369,6 +646,8 @@ def uninstall(
     # Since it is more likely that profiles contain the root prefix,
     # this makes loops more efficient.
     prefixes.sort(key=lambda x: len(x.parts))
+
+    _debug_print(f"Discovered prefixes: {prefixes}")
 
     # Run conda --init reverse for the shells
     # that contain a prefix that is being uninstalled
@@ -396,13 +675,36 @@ def uninstall(
 
     if remove_config_files:
         print("Removing .condarc files...")
+        _debug_print(f"About to call _remove_config_files with: {remove_config_files}")
         _remove_config_files(remove_config_files)
 
     if remove_user_data:
         print("Removing user data...")
-        _remove_file_directory(Path("~/.conda").expanduser())
+        # Debug: show exactly what path we're about to use
+        raw_path = Path("~/.conda")
+        _debug_print(f"  raw_path (before expanduser) = {raw_path}")
+        try:
+            expanded_path = raw_path.expanduser()
+            _debug_print(f"  expanded_path (after expanduser) = {expanded_path}")
+            _debug_print(f"  expanded_path type = {type(expanded_path)}")
+            _debug_print(f"  '~' still in expanded_path = {'~' in str(expanded_path)}")
+            _debug_print(f"  expanded_path.exists() = {expanded_path.exists()}")
+            if expanded_path.exists():
+                _debug_print(f"  expanded_path.is_dir() = {expanded_path.is_dir()}")
+        except Exception as e:
+            _debug_print(f"  expanduser FAILED: {type(e).__name__}: {e}")
+            expanded_path = raw_path
+
+        _remove_file_directory(expanded_path)
+    else:
+        _debug_print("remove_user_data is False, skipping user data removal")
 
     # Remove default activation environment where possible.
     # Run this at the end because at this point, a lot of
     # configuration files may have already been deleted.
+    _debug_print("Calling _remove_default_environment_from_configs...")
     _remove_default_environment_from_configs(prefixes)
+
+    _debug_print("=" * 70)
+    _debug_print("UNINSTALL FUNCTION COMPLETED")
+    _debug_print("=" * 70)
