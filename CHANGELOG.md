@@ -31,10 +31,7 @@ Remember to update the hyperlinks at the bottom.
 ### Contributors
 
 * @lrandersson
-* @conda-bot
-* @dependabot[bot]
 * @hiroalchem
-* @pre-commit-ci[bot]
 
 
 
