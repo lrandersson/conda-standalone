@@ -1,6 +1,6 @@
 ### Enhancements
 
-* Update `conda` to `26.7.0`, `conda-libmamba-solver` to `26.7.0`, and minimum version of `menuinst` to `2.5.2`. (#301)
+* Update `conda` to `26.7.0`, `conda-libmamba-solver` to `26.7.0`, `Python` to `3.13.14`, and minimum version of `menuinst` to `2.5.2`. (#301)
 
 ### Bug fixes
 
