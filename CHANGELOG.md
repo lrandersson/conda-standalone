@@ -13,6 +13,31 @@ Remember to update the hyperlinks at the bottom.
 
 [//]: # (current developments)
 
+## 26.7.0 (2026-08-04)
+
+### Enhancements
+
+* Update `conda` to `26.5.3` and minimum version of `constructor` to `3.15.3`. (#286)
+* Update `conda` to `26.7.0`, `conda-libmamba-solver` to `26.7.0`, `libmambapy` to `2.8.1`, `Python` to `3.13.14`, and minimum version of `menuinst` to `2.5.2`. (#301)
+
+### Bug fixes
+
+* Ship the menuinst macOS launcher templates byte-for-byte instead of letting
+  PyInstaller rewrite their load commands. PyInstaller's binary processing
+  removed the `/usr/lib/swift` rpath from `appkit_launcher_*`, so shortcuts
+  created by conda-standalone failed to launch on x86_64 with
+  `Library not loaded: @rpath/libswiftCore.dylib`. (conda/menuinst#507)
+
+### Contributors
+
+* @lrandersson
+* @conda-bot
+* @dependabot[bot]
+* @hiroalchem
+* @pre-commit-ci[bot]
+
+
+
 ## 26.5.2 (2026-06-09)
 
 ### Enhancements
