@@ -17,8 +17,7 @@ Remember to update the hyperlinks at the bottom.
 
 ### Enhancements
 
-* Update `conda` to `26.5.3` and minimum version of `constructor` to `3.15.3`. (#286)
-* Update `conda` to `26.7.0`, `conda-libmamba-solver` to `26.7.0`, `libmambapy` to `2.8.1`, `Python` to `3.13.14`, and minimum version of `menuinst` to `2.5.2`. (#301)
+* Update `conda` to `26.7.0`, `conda-libmamba-solver` to `26.7.0`, `libmambapy` to `2.8.1`, `Python` to `3.13.14`, minimum version of `menuinst` to `2.5.2`, and minimum version of `constructor` to `3.15.3`. (#301, #286)
 
 ### Bug fixes
 
