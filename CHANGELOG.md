@@ -13,6 +13,13 @@ Remember to update the hyperlinks at the bottom.
 
 [//]: # (current developments)
 
+## 26.9.3 (2026-10-14)
+
+### Contributors
+
+
+
+
 ## 29.6.2.post1 (2026-10-13)
 
 ### Bug fixes
